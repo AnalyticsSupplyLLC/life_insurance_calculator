@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+  <script src="http://d3js.org/d3.v4.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+  <script src="//code.jquery.com/ui/1.12.0/jquery-ui.js"></script>
+  <style>
+  	
+  </style>
+  <script type="text/javascript"> 
+    function UserAction() {
+    	var xhttp = new XMLHttpRequest();
+    	//debugger;
+        xhttp.onreadystatechange = function() {
+           if (this.readyState == 4 && this.status == 200) {
+           	   var resp = this.responseText;
+           	   var jout = JSON.parse(resp);
+           	   debugger;
+               console.log('complete!!!  (onetime expense): '+jout[0].onetime_expenses);
+           }
+        };
+        xhttp.open("POST", "http://hl299027.corp.alliance.lan:5000/ins/api/v1.0/scenarios", true);
+        xhttp.setRequestHeader("Content-type", "application/json");
+        //xmlhttp.send(JSON.stringify({name:"John Rambo", time:"2pm"}));
+        var jin = {'apr':.06,'calculator':{"income":Number($('input#inc').val()),'num_kids':3,'loans':Number($('input#loan').val())},
+       'insurance':{'t_exist_db':900000,'t_exist_trm':5,'wl_exist_db':50000}};
+        xhttp.send(JSON.stringify(jin));
+    }
+  </script>
+ </head>
+<body>
+<form>
+  Loans: <input id='loan' type="text" value="100000" name="salary"><br>
+  Income: <input id='inc' type="text" value="50000" name="income"><br>
+</form>
+<button type="submit" onclick="UserAction()">GO!!!</button>
+</body>
+</html>

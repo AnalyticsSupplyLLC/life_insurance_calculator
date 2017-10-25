@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="http://d3js.org/d3.v4.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+  <script src="//code.jquery.com/ui/1.12.0/jquery-ui.js"></script>
+
+    <style>
+	
+
+  .areaExp {
+        fill: steelblue;
+    }
+  .areaGap {
+        fill: red;
+    }
+  .areaExt {
+        fill: green;
+  }
+
+    </style>
+    <script type="text/javascript">  
+
+	  function get_dimensions()
+	  {
+        var chart = d3.select("svg#chart");
+        var w = Number(chart.attr("width"));
+        var h = Number(chart.attr("height"));
+
+        if (w > 900){w = 900;};
+        if (h > 500){h = 500;};
+
+	      var margin = {top: Math.round(h*.04), right: Math.round(w*.022), bottom: Math.round(h*.06), left: Math.round(w*.11)},
+              width = w - margin.left - margin.right,
+              height = h - margin.top - margin.bottom;
+			  
+		  var dim = {mar: margin, w: width, h: height};
+		  
+		  return dim;
+	  }
+	  
+	  function get_scales_set()
+	  {
+	    var today = new Date();
+		var minYear = today.getFullYear();
+		var maxYear = minYear + 30;
+		return get_scales(0,200000, minYear, maxYear);
+	  }
+	  
+	  function get_scales(minY, maxY, minX, maxX)
+	  {
+	  
+	     var dim = get_dimensions();
+		 var margin = dim.mar;
+		 var width = dim.w;
+
+		 var height = dim.h;
+		 
+		 var x = d3.scaleLinear().range([0, width]);
+         var y = d3.scaleLinear().range([height, 0]);
+		 
+		 x.domain([minX, maxX]);
+         y.domain([minY, maxY]);
+		 
+		 return {xScale: x, yScale: y};
+	  }
+
+	  function create_svg()
+	  {
+	      "use strict";
+        var dim = get_dimensions();
+		
+		    var margin = dim.mar;
+		    var width = dim.w;
+		    var height = dim.h;
+
+        $('#myRange').attr('width',900)
+		    
+        d3.select("div#a")
+              .append("h1")
+              .text("");
+			  
+		    d3.select("div#a")
+              .append("h2")
+              .text("");
+			  
+        
+		
+        // add the graph canvas to the body of the webpage
+        var svg = d3.select("svg#chart")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom)
+            .attr("viewBox","0 0 "+(width + margin.left + margin.right)+" "+(height + margin.top + margin.bottom))
+            .attr("perserveAspectRatio","xMinYMid")
+            .attr("id","chart")
+          .append("g")
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+        // set the ranges
+        var scales = get_scales_set();
+		    var x = scales.xScale;
+		    var y = scales.yScale;
+		
+		// Add the x Axis
+       svg.append("g")
+	       .attr("class","xaxis")
+           .attr("transform", "translate(0," + height + ")")
+           .call(d3.axisBottom(x).ticks(16, "d"));
+     
+       // text label for the x axis
+       svg.append("text")             
+           .attr("transform",
+                 "translate(" + (width/2) + " ," + 
+                                (height + margin.top + 10 ) + ")")
+           .style("text-anchor", "middle")
+           .text("Year");
+		   
+		// Add the y Axis
+       svg.append("g")
+	       .attr("class","yaxis")
+           .call(d3.axisLeft(y));
+    
+           // text label for the y axis
+       svg.append("text")
+           .attr("transform", "rotate(-90)")
+           .attr("y", 0 - margin.left)
+           .attr("x",0 - (height / 2))
+           .attr("dy", "1em")
+           .style("text-anchor", "middle")
+           .text("Total Expenses"); 
+		   
+	    var pExp = svg.append("path").attr('class','areaExp');
+        var pGap = svg.append("path").attr('class','areaGap');
+        var pExt = svg.append("path").attr('class','areaExt');
+		
+        
+	  }
+      function draw(life_needs) {
+        debugger;
+        //2065-01-01T00:00:00.000Z
+
+        var parseDate = d3.timeParse("%Y-%m-%dT%H:%M:%S.%L")
+        var tFormat = d3.timeFormat("%Y");
+        life_needs.forEach(function(d) {
+            var hdate = d.scenario_date.slice(0,-1);
+            d.scenario_date = parseDate(hdate);
+            d.date_year = Number(tFormat(d.scenario_date));
+        });
+        
+        var rngMax = d3.max(life_needs,function(d){return d.scenario_year;})
+        $('input#myRange').attr("max",rngMax);
+        $('input#myRange').attr('value',0);
+        $('input#myRange').attr('min',0);
+
+         life_needs.forEach(function(d) {
+            d['total_expenses'] = d.annual_expenses + d.onetime_expenses;
+            d['total_income'] = d.income + d.insurance_benefit
+            d['extra_benefits'] = 0
+            if (d.total_income > d.total_expenses)
+            {
+              d.extra_benefits = d.total_income - d.total_expenses
+            }
+         });
+
+		 var svg = d3.selectAll("svg");
+     var dim = get_dimensions();
+    
+        var margin = dim.mar;
+        var width = dim.w;
+        var height = dim.h;
+
+        debugger;
+        // Scale the range of the data
+        var getX = function (d) { return d.date_year;}
+        var minX = d3.min(life_needs, getX);
+        var maxX = d3.max(life_needs, getX);
+		    var minY = 0;
+		    var maxY = d3.max(life_needs, function(d) { return d.total_expenses + d.gap; });
+         
+	    var scales = get_scales(minY,maxY,minX,maxX);
+		  var x = scales.xScale;
+		  var y = scales.yScale;
+		
+		svg.select(".yaxis")
+		   .transition()
+		   .duration(1000)
+		   .ease(d3.easeBounceInOut)
+		  .call(d3.axisLeft(y));
+		  
+		svg.select(".xaxis")
+       .attr("transform", "translate(0," + height + ")")
+		   .transition()
+		   .duration(1000)
+		   .ease(d3.easeBounceInOut)
+		  .call(d3.axisBottom(x).ticks(16, "d"));
+		
+        function range(start,count){return Array.apply(0,Array(count)).map(function(element, index){return index + start;});}
+        var jd = {'scenario':{},'year':{},'xpos':0};
+        var ar = range(minX,rngMax+1)
+        ar.forEach(function(val,i){jd['scenario'][val] = i; return;});
+        ar.forEach(function(val,i){jd['year'][i] = val; return;});
+
+
+
+        svg.call(d3.drag()
+           .on("drag",  function() {return dragged(x,jd,minX,minX+rngMax);})
+           .on("start", function() {return start_drag(jd);})
+           .on("end",   function() {return end_drag(jd);}));
+
+        transform(0);
+        // handle on click event
+          d3.select('#myRange').on('change', change);
+
+        function change(d){
+          debugger;
+          var sel = 0
+          if(this.value != null)
+          {
+            sel = d3.select(this).node().value;  
+          }
+          $('input#myRange').attr("value",sel)
+          transform(sel)
+        }
+        function transform(aSel){
+          var colorMap = {'total_expenses':'blue','gap':'red','extra_benefits':'green'}
+          var fdata = filter_data(life_needs,aSel);
+ 
+          var argKeys = ["total_expenses","gap","extra_benefits"];
+          var stack = d3.stack()
+           .keys(argKeys)
+           .order(d3.stackOrderNone)
+           .offset(d3.stackOffsetNone);
+
+          var series = stack(fdata);
+
+          var area = d3.area()
+             .x(function(d, i) { 
+               var xVal = 0;
+               if (d.hasOwnProperty('data'))
+                 { xVal = d.data.date_year}
+               else{ xVal = d[i].data.date_year} 
+               return x(xVal); })
+             .y0(function(d,i) { 
+               var y0Val = 0;
+               if (d.hasOwnProperty('data'))
+                 { y0Val = d[0]}
+               else{ y0Val = d[i][0]} 
+               return y(y0Val);  })
+             .y1(function(d,i) { 
+               var y0Val = 0;
+               if (d.hasOwnProperty('data'))
+                 { y0Val = d[1]}
+               else{ y0Val = d[i][1]} 
+               return y(y0Val); });
+   
+	       var pExp = d3.select("path.areaExp");
+		   var pGap = d3.select("path.areaGap");
+		   var pExt = d3.select("path.areaExt");
+   
+           pExp.datum(series[0])
+             .transition()
+                .duration(500)
+                .ease(d3.easeLinear)
+             .attr("d", area);
+
+           pGap.datum(series[1])
+             .transition()
+               .duration(500)
+                .ease(d3.easeLinear)
+             .attr("d", area);
+
+           pExt.datum(series[2])
+             .transition()
+               .duration(500)
+                .ease(d3.easeLinear)
+             .attr("d", area);
+        }
+    
+      function filter_data(data, selection)
+      {
+        var subdata = data.filter(function(d) { return d.scenario_year == selection;})
+        return subdata;
+      }
+
+      function buttonClick(add_amt){
+          var cur_sel = $('input#myRange').attr('value');
+          var sel = Number(cur_sel) + add_amt;
+          $('input#myRange').attr("value",sel)
+          transform(sel);
+      }
+
+      function start_drag(conv_d) {
+        debugger;
+        var x = d3.event.x;
+        conv_d['xpos'] = x;
+        //console.log('start: '+x)
+      }
+
+      function end_drag(conv_d) {
+        debugger;
+        var sel = conv_d['selection']
+        $('input#myRange').attr("value",sel)
+      }
+
+      function dragged(xScale, conv_d, aMin, aMax) {
+           debugger;
+           var x = d3.event.x;
+           
+           var sel = conv_d['scenario'][aMin];
+           var cur_sel = $('input#myRange').attr('value');
+           var cur_year = conv_d['year'][cur_sel];
+           var cur_x = xScale(cur_year);
+           var lst_x = conv_d['xpos'];
+           //var lst_year = Math.floor(xScale.invert(lst_x));
+           var chg_x = x - lst_x;
+           
+           var x_scaled = Math.floor(xScale.invert(cur_x + chg_x)); 
+           //console.log("start: "+lst_x+", cur_x: "+x+", moved from: "+cur_x)
+           if (x_scaled >= aMax){
+              sel = conv_d['scenario'][aMax];
+           }
+           else if (x_scaled > aMin){
+              sel = conv_d['scenario'][x_scaled]
+           }
+           
+           conv_d['selection'] = sel;
+           transform(sel);
+}
+
+
+      $('input#myRange').on('change', change);
+      $('button#buttonLeft').on('click', function() {return buttonClick(-1);});
+      $('button#buttonRight').on('click', function() {return buttonClick(1);})
+
+
+      };    
+      
+      </script>
+  </head>
+<body>
+  <script type="text/javascript"> 
+   function UserAction() {
+      var xhttp = new XMLHttpRequest();
+      //debugger;
+        xhttp.onreadystatechange = function() {
+           if (this.readyState == 4 && this.status == 200) {
+               var resp = this.responseText;
+               var jout = JSON.parse(resp);
+               debugger;
+               console.log('complete!!!  (onetime expense): '+jout[0].onetime_expenses);
+               //$('svg').remove();
+               draw(jout);
+           }
+        };
+        xhttp.open("POST", "/ins/api/v1.0/scenarios", true);
+        xhttp.setRequestHeader("Content-type", "application/json");
+        //xmlhttp.send(JSON.stringify({name:"John Rambo", time:"2pm"}));
+        var jin = {'apr':.06,'calculator':{"income":Number($('input#inc').val()),'youngest_kid':Number($('input#ykid').val()),
+                  'num_kids':Number($('input#nkids').val()),'loans':Number($('input#loan').val())},
+                  'insurance':{'t_exist_db':Number($('input#tins').val()),'t_exist_trm':Number($('input#tinsl').val()),'wl_exist_db':Number($('input#wlins').val())}};
+        xhttp.send(JSON.stringify(jin));
+    }
+	
+	window.onload = function() {
+          create_svg();
+          var chart = d3.select("svg#chart");
+          var aspect = Number(chart.attr("width")) / Number(chart.attr("height"));
+          var container = d3.select("div#a");
+
+          $(window).on("resize", function() {
+            var targetWidth = container.node().getBoundingClientRect().width
+            chart.attr("width", targetWidth);
+             chart.attr("height", Math.round(targetWidth / aspect));
+         }).trigger("resize");
+    };
+
+      
+   //d3.json("/static/data/test.json", draw);
+  </script>
+
+<div id="slider">
+<form>
+  Loans: <input id='loan' type="text" value="100000" name="salary"><br>
+  Income: <input id='inc' type="text" value="50000" name="income"><br>
+  Number of Kids: <input id='nkids' type="text" value="0" name="numkids"><br>
+  Youngest Child: <input id='ykid' type="text" value="0" name="youngkid"><br>
+  Term Insurance: <input id='tins' type="text" value="50000" name="termins"><br>
+  Term Insurance Length: <input id='tinsl' type="text" value="10" name="terminslen"><br>
+  Whole Life Insurance: <input id='wlins' type="text" value="10000" name="wlins"><br>
+</form>
+<button type="submit" onclick="UserAction()">GO!!!</button>
+</div>
+<div id="a" class="canvas">
+   <svg id="chart" width="900" height="500"></svg>
+</div>
+<div id = "b" class="reflect" align="center">
+<section id="top"> 
+<button id="buttonLeft"><</button>
+<input id="myRange" type="range" min="0" max="31" step="1" value="0" data-rangeslider> <output id="js-output"></output>
+<button id="buttonRight">></button>
+</section>
+</div>
+</body>
+<script>
+ 
+
+
+ 
+</script>
+</html>
